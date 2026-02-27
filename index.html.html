@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAI Translate — Cost Calculator</title>
+
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --border: #dde1e9;
+    --accent: #F94917;
+    --accent2: #2E77B7;
+    --expert: #F94917;
+    --text: #131c30;
+    --muted: #8a94a6;
+    --standard: #2E77B7;
+    --premium: #F94917;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header { margin-bottom: 56px; }
+
+  .top-bar {
+    background: #131c30;
+    margin: -60px -24px 48px -24px;
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  .brand {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: Arial, sans-serif;
+    font-size: clamp(36px, 6vw, 60px);
+    line-height: 1.05;
+    color: #131c30;
+    margin-bottom: 12px;
+  }
+
+  h1 em { font-style: italic; color: var(--accent); }
+
+  .subtitle { color: var(--muted); font-size: 14px; letter-spacing: 0.02em; }
+
+  .rule { height: 1px; background: var(--border); margin: 40px 0; }
+
+  .section-label {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #131c30;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  /* Word count */
+  .word-input-block { margin-bottom: 40px; }
+
+  .word-input-wrap {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .word-input-wrap:focus-within { border-color: var(--accent); }
+
+  .word-input-wrap input {
+    flex: 1;
+    background: var(--surface);
+    border: none;
+    outline: none;
+    padding: 18px 20px;
+    font-family: Arial, sans-serif;
+    font-size: 28px;
+    color: #131c30;
+    width: 100%;
+  }
+
+  .word-input-wrap input::placeholder { color: var(--muted); }
+
+  .input-unit {
+    background: #f0f2f5;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-left: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .paste-area { margin-top: 12px; }
+
+  .paste-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s;
+    padding: 0;
+  }
+  .paste-toggle:hover { color: var(--accent2); }
+
+  .paste-box {
+    margin-top: 12px;
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .paste-box.open { display: block; }
+
+  .paste-box textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .paste-count {
+    margin-top: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Language grid */
+  .lang-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 560px) { .lang-grid { grid-template-columns: 1fr; } }
+
+  .lang-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+    position: relative;
+  }
+
+  .lang-card:hover { background: var(--surface2); }
+
+  .lang-card.selected-standard { border-color: var(--standard); background: rgba(46, 119, 183, 0.06); }
+  .lang-card.selected-premium  { border-color: var(--premium);  background: rgba(249, 73, 23, 0.06); }
+
+  .lang-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .lang-name { font-size: 14px; font-weight: 500; }
+
+  .lang-tier {
+    font-family: Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 2px;
+  }
+
+  .tier-standard { background: rgba(46,119,183,0.1); color: #2E77B7; border: 1px solid rgba(46,119,183,0.25); }
+  .tier-premium  { background: rgba(212,255,110,0.10); color: var(--premium);  border: 1px solid rgba(212,255,110,0.25); }
+
+  .lang-meta { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  .lang-multiplier { font-family: Arial, sans-serif; font-size: 12px; margin-top: 6px; }
+
+  .lang-card.selected-standard .lang-multiplier { color: var(--standard); }
+  .lang-card.selected-premium  .lang-multiplier { color: var(--premium); }
+  .lang-card:not(.selected-standard):not(.selected-premium) .lang-multiplier { color: var(--muted); }
+
+  .check-icon {
+    position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center; font-size: 10px;
+  }
+
+  .selected-standard .check-icon { display: flex; background: var(--standard); color: #000; }
+  .selected-premium  .check-icon { display: flex; background: var(--premium);  color: #000; }
+
+  /* Service cards */
+  .service-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 560px) { .service-grid { grid-template-columns: 1fr; } }
+
+  .service-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    padding: 20px 20px 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+    position: relative;
+  }
+
+  .service-card:hover { background: var(--surface2); }
+
+  .service-card.active-translate { border-color: var(--accent2); background: rgba(46, 119, 183, 0.06); }
+  .service-card.active-expert    { border-color: var(--expert);  background: rgba(249,73,23,0.06); }
+
+  .service-card.mandatory { cursor: default; }
+  .service-card.mandatory:hover { background: rgba(46, 119, 183, 0.06); }
+
+  .mandatory-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: rgba(110,186,255,0.08);
+    border: 1px solid rgba(110,186,255,0.2);
+    border-radius: 2px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .mandatory-badge::before {
+    content: '⬤';
+    font-size: 5px;
+    opacity: 0.7;
+  }
+
+  .service-check {
+    position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+  }
+
+  .active-translate .service-check { display: flex; background: var(--accent2); color: #000; }
+  .active-expert    .service-check { display: flex; background: var(--expert);  color: #000; }
+
+  .service-type-badge {
+    font-family: Arial, sans-serif;
+    font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 2px; display: inline-block; margin-bottom: 10px;
+  }
+
+  .badge-translate { background: rgba(46,119,183,0.08); color: #2E77B7; border: 1px solid rgba(46,119,183,0.2); }
+  .badge-expert    { background: rgba(249,73,23,0.12); color: var(--expert);  border: 1px solid rgba(249,73,23,0.3); }
+
+  .service-name { font-size: 15px; font-weight: 500; margin-bottom: 6px; padding-right: 24px; }
+
+  .service-desc { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+
+  .service-pricing-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 3px; padding: 5px 10px;
+    font-family: Arial, sans-serif; font-size: 11px;
+  }
+
+  .pill-rate { font-size: 13px; font-weight: 500; }
+  .active-translate .pill-rate { color: var(--accent2); }
+  .active-expert    .pill-rate { color: var(--expert); }
+  .service-card:not(.active-translate):not(.active-expert) .pill-rate { color: var(--text); }
+
+  .pill-sep { color: var(--muted); }
+  .pill-label { color: var(--muted); font-size: 10px; }
+
+  /* Pricing reference */
+  .pricing-ref {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 560px) { .pricing-ref { grid-template-columns: 1fr; } }
+
+  .pricing-ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    padding: 16px 18px;
+  }
+
+  .prc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+  .prc-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .prc-name {
+    font-family: Arial, sans-serif;
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .prc-bundle { font-family: Arial, sans-serif; font-size: 20px; margin-bottom: 2px; }
+  .prc-bundle span { font-size: 13px; color: var(--muted); font-family: Arial, sans-serif; }
+
+  .prc-rate { font-family: Arial, sans-serif; font-size: 11px; color: var(--muted); }
+
+  /* Results */
+  .results {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+
+  .results-header {
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #f8f9fb;
+    font-family: Arial, sans-serif;
+    font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: #131c30; font-weight: 700;
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .result-row:last-child { border-bottom: none; }
+  .result-row:hover { background: var(--surface2); }
+
+  .result-label {
+    font-size: 13px; color: #131c30;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .result-lang-badge {
+    font-family: Arial, sans-serif;
+    font-size: 9px; letter-spacing: 0.1em; padding: 2px 6px; border-radius: 2px;
+  }
+
+  .result-value { font-family: Arial, sans-serif; font-size: 20px; }
+
+  .result-row.translate-row .result-value { color: var(--muted); }
+  .result-row.expert-row    .result-value { color: var(--muted); }
+
+  .result-row.subtotal-translate { background: transparent; border-left: none; }
+  .result-row.subtotal-expert    { background: transparent; border-left: none; }
+
+  .result-row.subtotal-translate .result-value { color: var(--muted); }
+  .result-row.subtotal-expert    .result-value { color: var(--muted); }
+
+  .result-section-divider {
+    padding: 5px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: Arial, sans-serif;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+  }
+
+  .rsd-translate { color: #131c30; font-weight: 600; }
+  .rsd-expert    { color: #131c30; font-weight: 600; }
+
+  .result-row.grand-total {
+    background: rgba(212,255,110,0.05);
+    padding: 22px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .result-row.grand-total .result-label { font-size: 15px; color: #131c30; font-weight: 700; }
+  .result-row.grand-total .result-value { color: #F94917; font-size: 30px; font-weight: 700; }
+
+  .empty-state {
+    padding: 48px 24px; text-align: center;
+    color: var(--muted); font-size: 13px;
+    font-family: Arial, sans-serif; letter-spacing: 0.1em;
+  }
+
+  /* Breakdown */
+  .breakdown-toggle {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 20px; cursor: pointer;
+    font-family: Arial, sans-serif; font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); background: none; border: none; padding: 0;
+    transition: color 0.2s;
+  }
+
+  .breakdown-toggle:hover { color: var(--text); }
+  .breakdown-toggle svg { transition: transform 0.2s; }
+  .breakdown-toggle.open svg { transform: rotate(180deg); }
+
+  .breakdown-table {
+    display: none;
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+
+  .breakdown-table.open { display: block; }
+
+  .bt-row {
+    display: grid;
+    grid-template-columns: 2.5fr 1.2fr 1.3fr 1.2fr;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+
+  .bt-row:last-child { border-bottom: none; }
+
+  .bt-row.bt-header {
+    background: #f0f2f5;
+    font-family: Arial, sans-serif;
+    font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .bt-row.bt-section {
+    background: #f8f9fb;
+    font-family: Arial, sans-serif;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 7px 16px;
+    grid-template-columns: 1fr;
+  }
+
+  .bt-row.bt-data:hover { background: var(--surface2); }
+
+  .bt-cell { display: flex; align-items: center; }
+  .bt-cell.right { justify-content: flex-end; font-family: Arial, sans-serif; }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+
+  footer {
+    margin-top: 60px; text-align: center;
+    font-family: Arial, sans-serif; font-size: 10px;
+    letter-spacing: 0.15em; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="top-bar">
+      <span style="font-size:22px;font-weight:700;letter-spacing:0.15em;color:#ffffff">G A I</span><span style="font-size:22px;font-weight:300;letter-spacing:0.15em;color:#ffffff"> T R A N S L A T E</span><sup style="font-size:11px;font-weight:300;color:#ffffff;letter-spacing:0">™</sup>
+    </div>
+    
+    <h1>Token &amp; Cost<br><span style="color:#F94917">Estimator</span></h1>
+    <p class="subtitle">Estimate tokens and pricing for MT Translation and Expert Review services.</p>
+  </header>
+
+  <!-- 01 Word Count -->
+  <div class="section-label">01 — Word Count</div>
+  <div class="word-input-block">
+    <div class="word-input-wrap">
+      <input type="number" id="wordCount" placeholder="0" min="0" step="1" oninput="calculate()">
+      <div class="input-unit">words</div>
+    </div>
+    <div class="paste-area">
+      <button class="paste-toggle" onclick="togglePaste()">or paste text to count automatically</button>
+      <div class="paste-box" id="pasteBox">
+        <textarea id="pasteText" placeholder="Paste your source text here…" oninput="countPaste()"></textarea>
+        <div class="paste-count" id="pasteCount">0 words detected</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- 02 Language Group -->
+  <div class="section-label">02 — Select Language Group</div>
+  <div class="lang-grid">
+
+    <div class="lang-card" data-tier="standard" data-multiplier="1" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">Central &amp; Southern Europe</div>
+        <div class="lang-tier tier-standard">Standard</div>
+      </div>
+      <div class="lang-meta">French, German, Spanish, Italian, Portuguese, Greek, and more.</div>
+      <div class="lang-multiplier">1 word = 1.00 token</div>
+    </div>
+
+    <div class="lang-card" data-tier="standard" data-multiplier="1" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">Baltic Languages</div>
+        <div class="lang-tier tier-standard">Standard</div>
+      </div>
+      <div class="lang-meta">Lithuanian, Latvian, Estonian, and related languages.</div>
+      <div class="lang-multiplier">1 word = 1.00 token</div>
+    </div>
+
+    <div class="lang-card" data-tier="standard" data-multiplier="1" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">South American</div>
+        <div class="lang-tier tier-standard">Standard</div>
+      </div>
+      <div class="lang-meta">Spanish variants, Portuguese (Brazil), Quechua, and others.</div>
+      <div class="lang-multiplier">1 word = 1.00 token</div>
+    </div>
+
+    <div class="lang-card" data-tier="premium" data-multiplier="1.35" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">Northern Europe</div>
+        <div class="lang-tier tier-premium">Premium</div>
+      </div>
+      <div class="lang-meta">Swedish, Norwegian, Danish, Finnish, Icelandic, Dutch.</div>
+      <div class="lang-multiplier">1 word = 1.35 tokens</div>
+    </div>
+
+    <div class="lang-card" data-tier="premium" data-multiplier="1.35" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">African Languages</div>
+        <div class="lang-tier tier-premium">Premium</div>
+      </div>
+      <div class="lang-meta">Swahili, Amharic, Yoruba, Zulu, Hausa, and more.</div>
+      <div class="lang-multiplier">1 word = 1.35 tokens</div>
+    </div>
+
+    <div class="lang-card" data-tier="premium" data-multiplier="1.35" onclick="selectLang(this)">
+      <div class="check-icon">✓</div>
+      <div class="lang-card-header">
+        <div class="lang-name">Asian Languages</div>
+        <div class="lang-tier tier-premium">Premium</div>
+      </div>
+      <div class="lang-meta">Japanese, Chinese, Korean, Thai, Arabic, Hindi, and more.</div>
+      <div class="lang-multiplier">1 word = 1.35 tokens</div>
+    </div>
+
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- 03 Services -->
+  <div class="section-label">03 — Select Services</div>
+  <div class="service-grid">
+
+    <div class="service-card active-translate mandatory" id="svcTranslate">
+      <div class="service-check">✓</div>
+      <div class="service-type-badge badge-translate">MT Translation</div>
+      <div class="service-name">Translate Tokens <span class="mandatory-badge">Required</span></div>
+      <div class="service-desc">Machine translation of your source text. Always included with every GAI Translate project.</div>
+      <div class="service-pricing-pill">
+        <span class="pill-rate">£49</span>
+        <span class="pill-sep">/</span>
+        <span class="pill-label">3,000 tokens</span>
+      </div>
+    </div>
+
+    <div class="service-card" id="svcExpert" onclick="toggleService('expert')">
+      <div class="service-check">✓</div>
+      <div class="service-type-badge badge-expert">Expert Review</div>
+      <div class="service-name">Expert Review Tokens</div>
+      <div class="service-desc">Human expert refinement of MT output for accuracy and fluency.</div>
+      <div class="service-pricing-pill">
+        <span class="pill-rate">£420</span>
+        <span class="pill-sep">/</span>
+        <span class="pill-label">3,000 tokens</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- 04 Pricing Reference -->
+  <div class="section-label">04 — Token Pricing Reference</div>
+  <div class="pricing-ref">
+    <div class="pricing-ref-card">
+      <div class="prc-header">
+        <div class="prc-dot" style="background:var(--accent2)"></div>
+        <div class="prc-name">Translate Tokens</div>
+      </div>
+      <div class="prc-bundle" style="color:var(--accent2)">£49 <span>per 3,000 tokens</span></div>
+      <div class="prc-rate">≈ £0.01633 per token</div>
+    </div>
+    <div class="pricing-ref-card">
+      <div class="prc-header">
+        <div class="prc-dot" style="background:var(--expert)"></div>
+        <div class="prc-name">Expert Review Tokens</div>
+      </div>
+      <div class="prc-bundle" style="color:var(--expert)">£420 <span>per 3,000 tokens</span></div>
+      <div class="prc-rate">≈ £0.14 per token</div>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- 05 Results -->
+  <div class="section-label">05 — Results</div>
+  <div class="results">
+    <div class="empty-state" id="emptyState">Select a language group and at least one service to calculate.</div>
+    <div id="resultContent" style="display:none">
+
+      <div class="results-header">Summary — <span id="resLangName" style="color:var(--text)"></span></div>
+
+      <div class="result-row">
+        <div class="result-label">Source Words</div>
+        <div class="result-value" style="font-family: Arial, sans-serif;font-size:18px;color:var(--muted)" id="resWords">—</div>
+      </div>
+      <div class="result-row">
+        <div class="result-label">
+          Token Multiplier
+          <span class="result-lang-badge" id="resTierBadge"></span>
+        </div>
+        <div class="result-value" style="font-family: Arial, sans-serif;font-size:18px;color:var(--muted)" id="resMultiplier">—</div>
+      </div>
+      <div class="result-row">
+        <div class="result-label">Tokens per Service</div>
+        <div class="result-value" style="font-family: Arial, sans-serif;font-size:18px;color:var(--muted)" id="resTokensPerSvc">—</div>
+      </div>
+
+      <!-- Translate -->
+      <div id="translateSection">
+        <div class="result-section-divider rsd-translate">MT Translation</div>
+        <div class="result-row translate-row">
+          <div class="result-label">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-right:2px"></span>
+            Translate Tokens
+          </div>
+          <div class="result-value" id="resTranslateTokens">—</div>
+        </div>
+        <div class="result-row subtotal-translate">
+          <div class="result-label">Translation Cost</div>
+          <div class="result-value" id="resTranslateCost">—</div>
+        </div>
+      </div>
+
+      <!-- Expert -->
+      <div id="expertSection">
+        <div class="result-section-divider rsd-expert">Expert Review</div>
+        <div class="result-row expert-row">
+          <div class="result-label">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--expert);margin-right:2px"></span>
+            Expert Review Tokens
+          </div>
+          <div class="result-value" id="resExpertTokens">—</div>
+        </div>
+        <div class="result-row subtotal-expert">
+          <div class="result-label">Expert Review Cost</div>
+          <div class="result-value" id="resExpertCost">—</div>
+        </div>
+      </div>
+
+      <!-- Grand total -->
+      <div class="result-row grand-total">
+        <div class="result-label">Total Estimated Cost</div>
+        <div class="result-value" id="resGrandTotal">—</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Breakdown -->
+  <div id="breakdownSection" style="display:none">
+    <button class="breakdown-toggle" id="breakdownToggle" onclick="toggleBreakdown()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      View formula breakdown
+    </button>
+    <div class="breakdown-table" id="breakdownTable">
+      <div class="bt-row bt-header">
+        <div class="bt-cell">Step</div>
+        <div class="bt-cell right">Input</div>
+        <div class="bt-cell right">Rate</div>
+        <div class="bt-cell right">Result</div>
+      </div>
+      <!-- Tokenisation -->
+      <div class="bt-row bt-section"><span style="color:var(--muted)">Tokenisation</span></div>
+      <div class="bt-row bt-data">
+        <div class="bt-cell"><span class="dot" style="background:var(--muted)"></span>Words × Multiplier</div>
+        <div class="bt-cell right" id="bd1a">—</div>
+        <div class="bt-cell right" id="bd1b" style="color:var(--muted)">—</div>
+        <div class="bt-cell right" id="bd1c">—</div>
+      </div>
+      <!-- Translate -->
+      <div class="bt-row bt-section" id="bdS2"><span style="color:var(--accent2)">MT Translation</span></div>
+      <div class="bt-row bt-data" id="bdR2">
+        <div class="bt-cell"><span class="dot" style="background:var(--accent2)"></span>Tokens × Rate</div>
+        <div class="bt-cell right" id="bd2a">—</div>
+        <div class="bt-cell right" id="bd2b" style="color:var(--accent2)">—</div>
+        <div class="bt-cell right" id="bd2c" style="color:var(--accent2)">—</div>
+      </div>
+      <!-- Expert -->
+      <div class="bt-row bt-section" id="bdS3"><span style="color:var(--expert)">Expert Review</span></div>
+      <div class="bt-row bt-data" id="bdR3">
+        <div class="bt-cell"><span class="dot" style="background:var(--expert)"></span>Tokens × Rate</div>
+        <div class="bt-cell right" id="bd3a">—</div>
+        <div class="bt-cell right" id="bd3b" style="color:var(--expert)">—</div>
+        <div class="bt-cell right" id="bd3c" style="color:var(--expert)">—</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>GAI Translate · MT + Expert Review · Token Calculator</footer>
+</div>
+
+<script>
+  const TRANSLATE_RATE = 49 / 3000;
+  const EXPERT_RATE    = 420 / 3000;
+
+  let selectedLang = null;
+  let services = { translate: true, expert: false };
+
+  function selectLang(card) {
+    document.querySelectorAll('.lang-card').forEach(c =>
+      c.classList.remove('selected-standard', 'selected-premium'));
+    const tier = card.dataset.tier;
+    card.classList.add(tier === 'standard' ? 'selected-standard' : 'selected-premium');
+    selectedLang = {
+      name: card.querySelector('.lang-name').textContent,
+      tier,
+      multiplier: parseFloat(card.dataset.multiplier)
+    };
+    calculate();
+  }
+
+  function toggleService(type) {
+    if (type === 'translate') return; // Translate tokens are mandatory and cannot be deselected
+    services[type] = !services[type];
+    const card = document.getElementById(type === 'translate' ? 'svcTranslate' : 'svcExpert');
+    const cls  = type === 'translate' ? 'active-translate' : 'active-expert';
+    services[type] ? card.classList.add(cls) : card.classList.remove(cls);
+    calculate();
+  }
+
+  function fmt(n) {
+    return n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtN(n) { return n.toLocaleString('en-GB'); }
+
+  function calculate() {
+    const words = parseFloat(document.getElementById('wordCount').value) || 0;
+    const hasService = services.translate || services.expert;
+
+    if (!selectedLang || words === 0 || !hasService) {
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('resultContent').style.display = 'none';
+      document.getElementById('breakdownSection').style.display = 'none';
+      return;
+    }
+
+    const tokens = Math.ceil(words * selectedLang.multiplier);
+    const tCost  = services.translate ? tokens * TRANSLATE_RATE : 0;
+    const eCost  = services.expert    ? tokens * EXPERT_RATE    : 0;
+    const total  = tCost + eCost;
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultContent').style.display = 'block';
+    document.getElementById('breakdownSection').style.display = 'block';
+
+    document.getElementById('resLangName').textContent = selectedLang.name;
+    document.getElementById('resWords').textContent = fmtN(words);
+    document.getElementById('resMultiplier').textContent = '×' + selectedLang.multiplier.toFixed(2);
+    document.getElementById('resTokensPerSvc').textContent = fmtN(tokens) + ' tokens';
+
+    const badge = document.getElementById('resTierBadge');
+    badge.textContent = selectedLang.tier.toUpperCase();
+    badge.className = 'result-lang-badge ' +
+      (selectedLang.tier === 'standard' ? 'tier-standard' : 'tier-premium');
+
+    const tSec = document.getElementById('translateSection');
+    tSec.style.display = services.translate ? 'block' : 'none';
+    if (services.translate) {
+      document.getElementById('resTranslateTokens').textContent = fmtN(tokens) + ' tokens';
+      document.getElementById('resTranslateCost').textContent   = '£' + fmt(tCost);
+    }
+
+    const eSec = document.getElementById('expertSection');
+    eSec.style.display = services.expert ? 'block' : 'none';
+    if (services.expert) {
+      document.getElementById('resExpertTokens').textContent = fmtN(tokens) + ' tokens';
+      document.getElementById('resExpertCost').textContent   = '£' + fmt(eCost);
+    }
+
+    document.getElementById('resGrandTotal').textContent = '£' + fmt(total);
+
+    // Breakdown
+    document.getElementById('bd1a').textContent = fmtN(words) + ' words';
+    document.getElementById('bd1b').textContent = '×' + selectedLang.multiplier.toFixed(2);
+    document.getElementById('bd1c').textContent = fmtN(tokens) + ' tokens';
+
+    ['bdS2','bdR2'].forEach(id =>
+      document.getElementById(id).style.display = services.translate ? '' : 'none');
+    if (services.translate) {
+      document.getElementById('bd2a').textContent = fmtN(tokens) + ' tk';
+      document.getElementById('bd2b').textContent = '£' + TRANSLATE_RATE.toFixed(5) + '/tk';
+      document.getElementById('bd2c').textContent = '£' + fmt(tCost);
+    }
+
+    ['bdS3','bdR3'].forEach(id =>
+      document.getElementById(id).style.display = services.expert ? '' : 'none');
+    if (services.expert) {
+      document.getElementById('bd3a').textContent = fmtN(tokens) + ' tk';
+      document.getElementById('bd3b').textContent = '£' + EXPERT_RATE.toFixed(5) + '/tk';
+      document.getElementById('bd3c').textContent = '£' + fmt(eCost);
+    }
+  }
+
+  function togglePaste() {
+    document.getElementById('pasteBox').classList.toggle('open');
+  }
+
+  function countPaste() {
+    const text  = document.getElementById('pasteText').value.trim();
+    const words = text ? text.split(/\s+/).filter(w => w.length > 0) : [];
+    document.getElementById('pasteCount').textContent =
+      words.length.toLocaleString('en-GB') + ' words detected';
+    if (words.length > 0) {
+      document.getElementById('wordCount').value = words.length;
+      calculate();
+    }
+  }
+
+  function toggleBreakdown() {
+    document.getElementById('breakdownToggle').classList.toggle('open');
+    document.getElementById('breakdownTable').classList.toggle('open');
+  }
+</script>
+</body>
+</html>
